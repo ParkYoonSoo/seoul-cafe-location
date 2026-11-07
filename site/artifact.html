@@ -1,0 +1,941 @@
+<meta charset="utf-8">
+<title>서울 카페 입지 분석</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+</style>
+<style>
+/* 레이아웃: 상단 조건 바 고정 → 평가 기준 01~04 순서의 세로 리포트. 선택한 상권이 04 섹션 전체를 구동한다. */
+:root {
+  --bg: #f3f5f2; --surface: #ffffff; --sunk: #e9eee9; --ink: #16201c; --mute: #5b6a63; --line: #d9e0db;
+  --accent: #1d6a5a; --accent-ink: #ffffff; --accent-soft: #e1eee9; --gold: #b7822a; --gold-soft: #f6ecd9;
+  --good: #2c7a4b; --bad: #b0393a; --warn: #a8701b;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 12px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1513; --surface: #161e1b; --sunk: #1c2622; --ink: #e6ece9; --mute: #98a7a0; --line: #27332e;
+  --accent: #5cbaa3; --accent-ink: #0b1411; --accent-soft: #1b2e28; --gold: #e0b25a; --gold-soft: #2e2617;
+  --good: #63c08b; --bad: #e57373; --warn: #e0a64a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1513; --surface: #161e1b; --sunk: #1c2622; --ink: #e6ece9; --mute: #98a7a0; --line: #27332e;
+  --accent: #5cbaa3; --accent-ink: #0b1411; --accent-soft: #1b2e28; --gold: #e0b25a; --gold-soft: #2e2617;
+  --good: #63c08b; --bad: #e57373; --warn: #e0a64a; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--f-body); -webkit-font-smoothing: antialiased }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface) }
+.inner { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+h1, h2, h3 { text-wrap: balance; margin: 0 }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums }
+a { color: var(--accent) }
+
+.masthead { background: var(--surface); border-bottom: 1px solid var(--line) }
+.masthead .inner { padding-block: 28px 22px; display: grid; gap: 10px }
+.eyebrow { font: 600 12px/1 var(--f-num); letter-spacing: .12em; text-transform: uppercase; color: var(--accent) }
+.masthead h1 { font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; letter-spacing: -.02em }
+.masthead p { margin: 0; color: var(--mute); max-width: 66ch }
+.stamps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px }
+.stamp { font: 500 12px/1 var(--f-num); padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--mute); background: var(--bg) }
+.stamp b { color: var(--ink); font-weight: 600 }
+
+.controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1000; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line) }
+.controls .inner { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: flex-end }
+.ctl { display: grid; gap: 5px; min-width: 0 }
+.ctl > span { font-size: 11px; font-weight: 600; color: var(--mute); letter-spacing: .04em }
+.seg { display: inline-flex; background: var(--sunk); border-radius: 9px; padding: 3px; gap: 2px; flex-wrap: wrap }
+.seg input { position: absolute; opacity: 0; pointer-events: none }
+.seg label span { display: block; padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--mute); transition: background .15s, color .15s }
+.seg label:hover span { color: var(--ink) }
+.seg input:checked + span { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12) }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px }
+.money { display: flex; align-items: center; gap: 6px; background: var(--sunk); border-radius: 9px; padding: 3px 10px 3px 3px }
+.money input { width: 84px; border: 0; border-radius: 7px; padding: 6px 8px; font: 600 14px var(--f-num); background: var(--surface); color: var(--ink) }
+.money em { font-style: normal; font-size: 13px; color: var(--mute) }
+.help { flex-basis: 100%; font-size: 12.5px; color: var(--mute); margin: 0 }
+.help b { color: var(--ink) }
+
+.jump { display: flex; gap: 6px; flex-wrap: wrap; padding-block: 18px 0 }
+.jump a { text-decoration: none; font-size: 13px; color: var(--mute); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface) }
+.jump a b { font-family: var(--f-num); color: var(--accent); margin-right: 6px }
+.jump a:hover { color: var(--ink); border-color: var(--accent) }
+
+main { display: grid; gap: 18px; padding-block: 18px 40px }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: clamp(16px, 2.4vw, 26px); display: grid; gap: 16px; min-width: 0; scroll-margin-top: 90px }
+.sec-head { display: grid; gap: 4px }
+.sec-head .eyebrow { font-size: 11px }
+.sec-head h2 { font-size: 21px; font-weight: 700; letter-spacing: -.01em }
+.sec-head p { margin: 0; color: var(--mute); font-size: 14px; max-width: 72ch }
+h3 { font-size: 15px; font-weight: 700 }
+.note { font-size: 12.5px; color: var(--mute); margin: 0 }
+
+.flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
+.flow div { padding: 12px 14px; font-size: 13px; border-right: 1px solid var(--line); background: var(--bg) }
+.flow div:last-child { border-right: 0 }
+.flow b { display: block; font: 600 12px var(--f-num); color: var(--accent); margin-bottom: 3px }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px }
+th, td { padding: 9px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line) }
+tr:last-child > * { border-bottom: 0 }
+thead th { font-size: 12px; color: var(--mute); font-weight: 600; background: var(--bg) }
+tbody th { font-weight: 600; color: var(--ink); white-space: nowrap; background: var(--bg); width: 1% }
+td.num, th.num { text-align: right }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px }
+.stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; background: var(--bg) }
+.stat span { font-size: 12px; color: var(--mute) }
+.stat b { font: 600 22px/1.2 var(--f-num); letter-spacing: -.01em }
+.stat small { font-size: 12px; color: var(--mute) }
+
+.funnel { display: grid; gap: 6px }
+.fstep { display: grid; grid-template-columns: 150px 1fr 64px; gap: 10px; align-items: center; font-size: 13px }
+.fbar { height: 10px; border-radius: 99px; background: var(--sunk); overflow: hidden }
+.fbar i { display: block; height: 100%; background: var(--accent); border-radius: 99px }
+.fstep:last-of-type .fbar i { background: var(--gold) }
+.fstep .num { text-align: right; font-weight: 600 }
+.near { font-size: 13px; color: var(--mute) }
+.near b { color: var(--gold) }
+
+.picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.pick { all: unset; box-sizing: border-box; cursor: pointer; border: 1.5px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 10px; align-content: start; background: var(--surface); transition: border-color .15s, box-shadow .15s }
+.pick:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)) }
+.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.pick[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft) }
+.pick-top { display: flex; gap: 12px; align-items: flex-start }
+.rank { font: 600 30px/1 var(--f-num); color: var(--gold) }
+.pick h3 { font-size: 16px; line-height: 1.35 }
+.pick .where { font-size: 12.5px; color: var(--mute) }
+.growth { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.growth b { font: 600 24px/1 var(--f-num) }
+.growth span { font-size: 12px; color: var(--mute) }
+.drivers { display: grid; gap: 5px }
+.drv { display: grid; grid-template-columns: 74px 1fr 52px; gap: 8px; align-items: center; font-size: 12.5px }
+.drv .track { height: 6px; background: var(--sunk); border-radius: 99px; position: relative }
+.drv .track i { position: absolute; top: 0; bottom: 0; border-radius: 99px }
+.drv .num { text-align: right }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: var(--sunk); color: var(--mute) }
+.chip.good { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good) }
+.chip.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad) }
+.chip.gold { background: var(--gold-soft); color: var(--gold) }
+.pick .cta { font-size: 12px; color: var(--accent); font-weight: 600 }
+
+.maprow { display: grid; gap: 8px }
+.map { height: 420px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); z-index: 0 }
+.map.small { height: 360px }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mute) }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px }
+
+.sel-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; border-radius: 10px; background: var(--accent-soft) }
+.sel-bar strong { font-size: 17px }
+.sel-bar .seg { background: var(--surface) }
+.sel-bar .seg input:checked + span { background: var(--accent); color: var(--accent-ink) }
+.sub { display: grid; gap: 12px; padding-top: 18px; border-top: 1px dashed var(--line) }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px }
+.chart { height: 240px; min-width: 0 }
+.pal { display: flex; gap: 6px; margin-top: 6px }
+.pal i { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line) }
+.verdict { display: inline-block; font-weight: 700; padding: 2px 9px; border-radius: 6px }
+.verdict.good { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good) }
+.verdict.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad) }
+
+.simgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px }
+fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; align-content: start }
+legend { font-size: 12px; font-weight: 700; color: var(--accent); padding: 0 4px }
+fieldset label { display: grid; gap: 3px; font-size: 12px; color: var(--mute) }
+fieldset input { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font: 500 13.5px var(--f-num) }
+fieldset input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0 }
+.ok { color: var(--good); font-weight: 700 } .bad { color: var(--bad); font-weight: 700 }
+
+.range { display: flex; align-items: center; gap: 8px; font-size: 13px }
+.range input { accent-color: var(--accent); width: 160px }
+
+footer { border-top: 1px solid var(--line); background: var(--surface) }
+footer .inner { padding-block: 22px 36px; display: grid; gap: 12px }
+footer h2 { font-size: 15px }
+footer table { font-size: 12.5px }
+footer code { font: 500 12px var(--f-num); color: var(--accent) }
+.empty { padding: 26px; text-align: center; color: var(--mute); border: 1px dashed var(--line); border-radius: 10px }
+.gu-label { background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--mute) !important; font: 600 11px var(--f-body) }
+.gu-label::before { display: none }
+.leaflet-container { font-family: var(--f-body); background: var(--sunk) }
+.leaflet-container img.leaflet-tile { max-width: none !important }
+
+@media (max-width: 900px) { .picks, .simgrid { grid-template-columns: repeat(2, minmax(0, 1fr)) } .flow { grid-template-columns: 1fr 1fr } .flow div { border-bottom: 1px solid var(--line) } }
+@media (max-width: 560px) { .picks, .simgrid, .two, .flow { grid-template-columns: 1fr } .fstep { grid-template-columns: 110px 1fr 52px } .map { height: 340px } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="data.js" charset="utf-8"></script>
+<script src="gu.js" charset="utf-8"></script>
+<header class="masthead"><div class="inner">
+  <div class="eyebrow">Seoul Open Data · 2021Q4–2025Q4</div>
+  <h1>서울 카페·베이커리 3년 뒤 입지 분석</h1>
+  <p>투자금과 업종·업태를 고르면, 실제로 들어갈 수 있는 상권만 남긴 뒤 3년 뒤 점포당 매출이 가장 많이 오를 곳 3곳을 고르고 출점·손익·경쟁까지 이어서 보여줍니다.</p>
+  <div class="stamps" id="stamps"></div>
+</div></header>
+
+<div class="controls"><div class="inner">
+  <label class="ctl"><span>투자금</span><div class="money"><input id="budget" type="number" value="3" step="0.5" min="0.5"><em>억 원</em></div></label>
+  <div class="ctl"><span>업종</span><div class="seg">
+    <label><input type="radio" name="kind" value="coffee"><span>카페</span></label>
+    <label><input type="radio" name="kind" value="bakery"><span>베이커리</span></label>
+    <label><input type="radio" name="kind" value="blend" checked><span>베이커리 카페</span></label></div></div>
+  <div class="ctl"><span>업태</span><div class="seg">
+    <label><input type="radio" name="fmt" value="take"><span>테이크아웃</span></label>
+    <label><input type="radio" name="fmt" value="seat" checked><span>좌석형</span></label>
+    <label><input type="radio" name="fmt" value="big"><span>대형·목적지형</span></label></div></div>
+  <div class="ctl"><span>점수 기준</span><div class="seg">
+    <label><input type="radio" name="mode" value="growth" checked><span>성장형</span></label>
+    <label><input type="radio" name="mode" value="stable"><span>안정형</span></label></div></div>
+  <p class="help" id="modeHelp"></p>
+</div></div>
+
+<div class="inner"><nav class="jump" aria-label="섹션 이동">
+  <a href="#structure"><b>01</b>분석 구조</a><a href="#data"><b>02</b>데이터·검증</a><a href="#conclusion"><b>03</b>Top 3와 근거</a><a href="#action"><b>04</b>실행안</a>
+</nav></div>
+
+<main class="inner">
+<section id="structure">
+  <div class="sec-head"><div class="eyebrow">평가 기준 01 · Structure</div><h2>분석 구조</h2>
+  <p>원인(성장 동인)과 결과(점포당 실질 매출 성장)를 분리했습니다. 투자금은 점수에 넣지 않고 들어갈 수 있는 상권을 거르는 조건으로만 씁니다.</p></div>
+  <div class="flow">
+    <div><b>L1 제약</b>투자금·업종·업태로 들어갈 수 있고 흑자가 나는 상권만 남김</div>
+    <div><b>L2 동인</b>수요 × 공급 × 비용, 현재·추세·미래 3×3으로 3년 뒤 성장 예측</div>
+    <div><b>L3 검증</b>2022→2025 백테스트, 가중치 민감도, 유동인구 교차 확인</div>
+    <div><b>L4 결론</b>Top 3, 상권별 근거, 예상 반론과 대응</div>
+    <div><b>L5 실행</b>자리·시점·컨셉·메뉴·손익·경쟁·추적 지표</div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>현재 수준</th><th>최근 추세 (1년)</th><th>미래 요인</th></tr></thead>
+    <tbody>
+      <tr><th>수요</th><td>유동·직장·상주인구, 반경 500m 지하철 승하차</td><td>유동·직장인구 증가율, 20·30대 비중 변화, 업종 매출 증가율</td><td class="note">신규 역·입주 예정 (공공 데이터 없음 → 중립)</td></tr>
+      <tr><th>공급</th><td>점포당 매출, 유동 1만 명당 점포 수, 프랜차이즈 비중</td><td>점포 수 증가율, 개업률 − 폐업률</td><td>프랜차이즈 점포 순증</td></tr>
+      <tr><th>비용</th><td>자치구별 임대료 (가정치, L1 필터에 사용)</td><td colspan="2" class="note">임대료 추세 데이터 없음 → 점수에서 제외</td></tr>
+    </tbody></table></div>
+</section>
+
+<section id="data">
+  <div class="sec-head"><div class="eyebrow">평가 기준 02 · Analysis</div><h2>데이터 기준과 예측 검증</h2><p id="dataInfo"></p></div>
+  <div id="backtest"></div>
+</section>
+
+<section id="conclusion">
+  <div class="sec-head"><div class="eyebrow">평가 기준 03 · Argument</div><h2>들어갈 수 있는 상권과 Top 3</h2>
+  <p>카드를 누르면 아래 04 실행안·손익·경쟁 체크가 그 상권 기준으로 바뀝니다.</p></div>
+  <div class="funnel" id="funnel"></div>
+  <div class="picks" id="top3"></div>
+  <div class="maprow"><div id="map" class="map"></div>
+    <div class="legend"><span><i style="background:var(--gold)"></i>Top 3</span><span><i style="background:var(--accent)"></i>조건 통과 상권 (상위 150)</span><span id="tileNote">공유 페이지에서는 배경 지도 대신 자치구 경계를 표시합니다</span></div></div>
+  <h3>예상 반론과 대응 <span class="note" id="rebutFor"></span></h3>
+  <div id="rebut"></div>
+</section>
+
+<section id="action">
+  <div class="sec-head"><div class="eyebrow">평가 기준 04 · So What</div><h2>선택한 상권의 실행안</h2>
+  <p>Top 3 중 하나를 고르면 출점 자리·시점, 컨셉·메뉴, 손익, 경쟁 체크가 모두 그 상권으로 다시 계산됩니다.</p></div>
+  <div class="sel-bar"><span class="note">선택한 상권</span><strong id="selName">-</strong><div class="seg" id="selSeg"></div></div>
+
+  <div class="sub"><h3>출점·컨셉·마케팅</h3><div id="exec"></div><div class="two"><div id="chTime" class="chart"></div><div id="chAge" class="chart"></div></div></div>
+
+  <div class="sub"><h3>손익 시뮬레이션</h3><p class="note">선택한 상권의 객단가·매출과 업태 프리셋으로 기본값을 채웁니다. 숫자를 바꾸면 바로 다시 계산됩니다.</p>
+    <div class="simgrid" id="sim"></div><div id="simOut"></div><div id="chCash" class="chart"></div></div>
+
+  <div class="sub"><h3>경쟁·프랜차이즈 체크</h3>
+    <p class="note">추천 자리를 기준으로 자동 계산합니다. 지도를 클릭하면 그 지점으로 옮겨 다시 셉니다. 회피는 경쟁이 가장 적은 자리를, 벤치마킹은 프리미엄 프랜차이즈 근처면서 바로 옆 경쟁은 적은 자리를 추천합니다.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center">
+      <div class="seg"><label><input type="radio" name="cmode" value="avoid" checked><span>회피 모드</span></label><label><input type="radio" name="cmode" value="bench"><span>벤치마킹 모드</span></label></div>
+      <label class="range">반경 <input id="radius" type="range" min="100" max="1000" step="50" value="300"><b class="num" id="rlabel">300m</b></label>
+    </div>
+    <div class="two"><div id="cmap" class="map small"></div><div id="comp"></div></div>
+  </div>
+</section>
+</main>
+
+<footer><div class="inner">
+  <h2>참고 데이터</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>데이터</th><th>테이블(서비스)명</th><th>범위·용도</th></tr></thead>
+    <tbody>
+      <tr><td>서울시 상권분석서비스 (추정매출-상권)</td><td><code>VwsmTrdarSelngQq</code></td><td>2021~2025년 4분기, 커피-음료(CS100010)·제과점(CS100005) 월 매출·건수·시간대·연령</td></tr>
+      <tr><td>서울시 상권분석서비스 (점포-상권)</td><td><code>VwsmTrdarStorQq</code></td><td>동종 점포 수, 프랜차이즈 점포 수, 개업률·폐업률</td></tr>
+      <tr><td>서울시 상권분석서비스 (길단위인구-상권)</td><td><code>VwsmTrdarFlpopQq</code></td><td>유동인구, 20·30대 비중</td></tr>
+      <tr><td>서울시 상권분석서비스 (직장인구-상권)</td><td><code>VwsmTrdarWrcPopltnQq</code></td><td>직장인구</td></tr>
+      <tr><td>서울시 상권분석서비스 (상주인구-상권)</td><td><code>VwsmTrdarRepopQq</code></td><td>상주인구</td></tr>
+      <tr><td>서울시 상권분석서비스 (상권변화지표-상권)</td><td><code>VwsmTrdarIxQq</code></td><td>2025년 4분기 상권 단계 (다이나믹·상권확장·정체·상권축소)</td></tr>
+      <tr><td>서울시 상권분석서비스 (영역-상권)</td><td><code>TbgisTrdarRelm</code></td><td>상권 1,650개 이름·유형·면적·중심좌표 (EPSG:5181)</td></tr>
+      <tr><td>서울시 지하철 호선별 역별 시간대별 승하차 인원</td><td><code>CardSubwayTime</code></td><td>2021~2025년 10~12월, 상권 반경 500m 역 수요</td></tr>
+      <tr><td>서울시 역사마스터 정보</td><td><code>subwayStationMaster</code></td><td>역 좌표</td></tr>
+      <tr><td>서울시 휴게음식점 인허가 정보</td><td><code>LOCALDATA_072405</code></td><td>커피숍·다방·전통찻집 및 카페 상호, 영업 중 + 2024년 이후 폐업 (EPSG:5174)</td></tr>
+      <tr><td>서울시 제과점영업 인허가 정보</td><td><code>LOCALDATA_072218</code></td><td>베이커리 점포 위치, 영업 상태</td></tr>
+      <tr><td>통계청 소비자물가지수 (2020=100)</td><td>연평균 지수</td><td>매출 실질화 (2025년은 근사치)</td></tr>
+      <tr><td>서울시 자치구 경계</td><td><code>southkorea/seoul-maps</code> (KOSTAT 2013)</td><td>지도 배경 경계선</td></tr>
+    </tbody></table></div>
+  <p class="note">출처가 없는 가정치: 자치구별 평당 임대료, 상권 유형별 권리금 개월 수, 평당 인테리어비, 설비비, 1인 인건비, 업태별 매출 배수. 손익 시뮬레이터에서 직접 바꿀 수 있습니다. <span id="buildInfo"></span></p>
+</div></footer>
+<script src="app.js" charset="utf-8"></script>
